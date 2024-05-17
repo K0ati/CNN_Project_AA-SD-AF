@@ -1,0 +1,125 @@
+---
+title: "Programming Neural Networks"
+author: "Dustin Pierce"
+date: "2024-05-17"
+output: pdf_document
+---
+
+Below are some options for programming your own Neural Networks. You ARE ALLOWED to use AI or external resources to assist you. Please give credit (cite).
+
+## Keras
+
+[keras](https://tensorflow.rstudio.com/guides/keras/basics) is a Neural Network library. `Keras` is fast, flexible and provides lots of functionality. The installation process is labor-intensive, but is worth the effort. 
+
+SEE [here](https://docs.google.com/document/d/1-q86kpyCACWcYWHcmbd4XOkvRnif_kOZ/edit?usp=sharing&ouid=107235758751914785357&rtpof=true&sd=true) for the link to the installation instructions
+
+```{r}
+# Load the libraries (this assumes all packages installed)
+library(tensorflow)
+library(keras3)
+library(tidyverse)
+
+# Create a simple neural network model for testing
+model <- keras_model_sequential() %>%
+  # add hidden layer with 128 neurons and ReLu activation
+  layer_dense(units = 128, activation = 'relu', input_shape = c(784)) %>%
+  # add drop out (shut off random weights each iteration)
+  layer_dropout(rate = 0.2) %>%
+  # add output layer with 10 neurons with softmax activation
+  layer_dense(units = 10, activation = 'softmax')
+
+# Compile the model (define architecture)
+model %>% compile(
+  # optimize with Adaptive Moment Estimation
+  optimizer = 'adam',
+  # cost function is cross entropy (used for classification)
+  loss = 'sparse_categorical_crossentropy',
+  # measure accuracy of classification
+  metrics = c('accuracy')
+)
+
+# Load the MNIST dataset (hand written digits)
+mnist <- dataset_mnist()
+# TRAIN => model learns from training data
+x_train <- mnist$train$x
+y_train <- mnist$train$y
+# TEST => unseen data to vet model
+x_test <- mnist$test$x
+y_test <- mnist$test$y
+
+# Preprocess the data (center the pixel data)
+x_train <- array_reshape(x_train, c(nrow(x_train), 784)) / 255
+x_test <- array_reshape(x_test, c(nrow(x_test), 784)) / 255
+
+# Train the model 
+history <- model %>% 
+  fit(x_train, y_train,
+      epochs = 5,
+      batch_size = 32,
+      validation_split = 0.2
+)
+
+# Evaluate the model
+score <- model %>% evaluate(x_test, y_test)
+print(score)
+
+
+```
+
+
+## Neuralnet 
+
+[neuralnet](https://cran.r-project.org/web/packages/neuralnet/neuralnet.pdf) is an R package for training neural networks. Compared to `keras`, the `neuralnet` package is far less flexible, but the installation is instantaneous. 
+
+```{r}
+# Step 1: Install and load required packages
+# install.packages("neuralnet")
+library(neuralnet)
+library(datasets)
+
+# Step 2: Prepare the data
+# Load the iris dataset
+data(iris)
+
+# We need to transform the species into numerical values
+iris$Species <- as.numeric(factor(iris$Species)) - 1
+
+# Split the data into training and testing sets
+set.seed(123)  # For reproducibility
+sample_index <- sample(seq_len(nrow(iris)), size = 0.7 * nrow(iris))
+train_data <- iris[sample_index, ]
+test_data <- iris[-sample_index, ]
+
+# Normalize the data
+maxs <- apply(train_data[, -5], 2, max)
+mins <- apply(train_data[, -5], 2, min)
+train_data[, -5] <- scale(train_data[, -5], center = mins, scale = maxs - mins)
+test_data[, -5] <- scale(test_data[, -5], center = mins, scale = maxs - mins)
+
+# Step 3: Train the neural network
+# Define the formula for the neural network
+formula <- Species ~ Sepal.Length + Sepal.Width + Petal.Length + Petal.Width
+
+# Train the neural network
+set.seed(123)  # For reproducibility
+nn <- neuralnet(formula, data = train_data, hidden = c(5, 3), linear.output = FALSE)
+
+# Step 4: Evaluate the model
+# Predict on the test set
+predictions <- compute(nn, test_data[, -5])$net.result
+
+# Convert probabilities to class labels
+predicted_labels <- apply(predictions, 1, function(x) ifelse(x > 0.5, 1, 0))
+
+# Calculate accuracy
+accuracy <- sum(predicted_labels == test_data$Species) / nrow(test_data)
+print(paste("Accuracy:", accuracy))
+
+# Plot the neural network
+plot(nn)
+
+```
+
+## Custom Code
+
+Using an external software package is not required, of course. We can write our own code or use AI to write custom code for a Neural Network. You may use `ChatGPT` or equivalent AI model to help you code your Neural Networks.
